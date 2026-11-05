@@ -20,6 +20,23 @@ test('invalid email blocks reservation', async ({ page }) => {
   expect(reservationPosts).toBe(0);
 });
 
-test.skip('reservation sends correct payload and confirms booking', async ({ page }) => {
-  // TODO
+test('reservation sends correct payload and confirms booking', async ({ page }) => {
+  let requestPayload;
+  await page.route('**/api/reservations', async route => {
+    requestPayload = route.request().postDataJSON();
+    console.log('Reservation payload:', requestPayload);
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ reservationId: 'CB-DEMO-777', stationId: 'central' })
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Reserve at Central Square' }).click();
+  await page.getByRole('textbox', { name: 'Email address' }).fill('student@example.com');
+  await page.getByRole('button', { name: 'Confirm reservation' }).click();
+
+  await expect(page.getByRole('status')).toHaveText('Reservation confirmed: CB-DEMO-777');
+  expect(requestPayload).toEqual({ stationId: 'central', email: 'student@example.com' });
 });
